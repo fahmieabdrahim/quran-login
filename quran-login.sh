@@ -48,6 +48,7 @@ pause_screen() {
   IFS= read -r
 }
 
+
 header() {
   clear
 
@@ -69,6 +70,7 @@ header() {
 is_installed() {
   [[ -f "$PLAYER_SCRIPT" && -d "$AUDIO_DIR" ]]
 }
+
 
 is_enabled() {
   launchctl print "gui/$(id -u)/com.quran.login" >/dev/null 2>&1
@@ -160,14 +162,25 @@ create_player() {
 AUDIO_DIR="$AUDIO_DIR"
 
 LOCK_DIR="/tmp/quran-login.lock"
+LOCK_PID_FILE="/tmp/quran-login.pid"
 
 
 # ============================================================
-# REMOVE STALE LOCK
+# LOCK CHECK
 # ============================================================
 
-if [[ -d "\$LOCK_DIR" ]]; then
+if [[ -f "\$LOCK_PID_FILE" ]]; then
+
+  OLD_PID="\$(cat "\$LOCK_PID_FILE" 2>/dev/null || true)"
+
+  if [[ -n "\$OLD_PID" ]] && kill -0 "\$OLD_PID" 2>/dev/null; then
+    exit 0
+  fi
+
+  # Remove stale lock
+  rm -f "\$LOCK_PID_FILE"
   rmdir "\$LOCK_DIR" 2>/dev/null || true
+
 fi
 
 
@@ -179,12 +192,15 @@ if ! mkdir "\$LOCK_DIR" 2>/dev/null; then
   exit 0
 fi
 
+echo "\$\$" > "\$LOCK_PID_FILE"
+
 
 # ============================================================
 # CLEANUP
 # ============================================================
 
 cleanup() {
+  rm -f "\$LOCK_PID_FILE"
   rmdir "\$LOCK_DIR" 2>/dev/null || true
 }
 
@@ -220,9 +236,7 @@ AUDIO_FILES=(
 for file in "\${AUDIO_FILES[@]}"; do
 
   if [[ -f "\$AUDIO_DIR/\$file" ]]; then
-
     /usr/bin/afplay "\$AUDIO_DIR/\$file"
-
   fi
 
 done
@@ -501,7 +515,8 @@ uninstall_app() {
   rm -f \
     /tmp/quran-login.log \
     /tmp/quran-login-error.log \
-    /tmp/quran-login.lock
+    /tmp/quran-login.lock \
+    /tmp/quran-login.pid
 
 
   echo
