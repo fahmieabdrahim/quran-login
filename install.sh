@@ -3,10 +3,13 @@
 set -e
 
 REPO="https://raw.githubusercontent.com/fahmieabdrahim/quran-login/main"
+
 APP_DIR="$HOME/QuranLogin"
 BIN_DIR="$HOME/bin"
+
 SCRIPT="$APP_DIR/quran-login.sh"
 COMMAND="$BIN_DIR/quran-login"
+
 SHELL_CONFIG="$HOME/.zshrc"
 
 echo
@@ -20,15 +23,17 @@ echo "[1/4] Creating directories..."
 mkdir -p "$APP_DIR"
 mkdir -p "$BIN_DIR"
 
+echo
 echo "[2/4] Downloading Quran Login..."
 
-if ! curl -fL \
+if ! curl \
+    -fL \
     --retry 3 \
     --connect-timeout 10 \
     --max-time 120 \
     "$REPO/quran-login.sh" \
-    -o "$SCRIPT"; then
-
+    -o "$SCRIPT"
+then
     echo
     echo "ERROR: Failed to download Quran Login."
     echo
@@ -37,10 +42,12 @@ fi
 
 chmod +x "$SCRIPT"
 
+echo
 echo "[3/4] Creating command..."
 
 ln -sfn "$SCRIPT" "$COMMAND"
 
+echo
 echo "[4/4] Configuring PATH..."
 
 touch "$SHELL_CONFIG"
@@ -56,13 +63,20 @@ echo "======================================"
 echo "       Installation Complete!"
 echo "======================================"
 echo
+
 echo "Installed to:"
 echo "  $APP_DIR"
+
 echo
 echo "Command:"
 echo "  quran-login"
-echo
-echo "Starting Quran Login..."
-echo
 
-"$SCRIPT"
+echo
+echo "Run Quran Login with:"
+echo
+echo "  quran-login"
+
+echo
+echo "Note:"
+echo "Open a new Terminal if the command is not found."
+echo
