@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 
 set -e
@@ -23,9 +22,18 @@ mkdir -p "$BIN_DIR"
 
 echo "[2/4] Downloading Quran Login..."
 
-curl -fL --retry 3 --connect-timeout 10 \
+if ! curl -fL \
+    --retry 3 \
+    --connect-timeout 10 \
+    --max-time 120 \
     "$REPO/quran-login.sh" \
-    -o "$SCRIPT"
+    -o "$SCRIPT"; then
+
+    echo
+    echo "ERROR: Failed to download Quran Login."
+    echo
+    exit 1
+fi
 
 chmod +x "$SCRIPT"
 
@@ -57,5 +65,4 @@ echo
 echo "Starting Quran Login..."
 echo
 
-exec "$COMMAND"
-```
+"$SCRIPT"
