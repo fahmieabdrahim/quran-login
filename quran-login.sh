@@ -39,19 +39,35 @@ NC='\033[0m'
 
 
 # ============================================================
-# BASIC FUNCTIONS
+# INPUT
 # ============================================================
+
+read_input() {
+  local value=""
+
+  if [[ -r /dev/tty ]]; then
+    IFS= read -r value < /dev/tty
+  else
+    IFS= read -r value
+  fi
+
+  printf '%s' "$value"
+}
+
 
 pause_screen() {
   echo
   printf "Press Enter to continue..."
-  IFS= read -r
+  read_input >/dev/null
 }
 
 
+# ============================================================
+# UI
+# ============================================================
+
 header() {
   clear
-
   echo
   echo "╔══════════════════════════════════════════════╗"
   echo "║           QURAN LOGIN - macOS               ║"
@@ -64,7 +80,7 @@ header() {
 
 
 # ============================================================
-# STATUS CHECK
+# STATUS
 # ============================================================
 
 is_installed() {
@@ -77,8 +93,32 @@ is_enabled() {
 }
 
 
+show_status() {
+  echo
+  echo "STATUS"
+  echo "────────────────────────────────────────────"
+
+  if is_installed; then
+    echo -e "Installation : ${GREEN}INSTALLED${NC}"
+  else
+    echo -e "Installation : ${RED}NOT INSTALLED${NC}"
+  fi
+
+  if is_enabled; then
+    echo -e "Auto Login   : ${GREEN}ENABLED${NC}"
+  else
+    echo -e "Auto Login   : ${YELLOW}DISABLED${NC}"
+  fi
+
+  echo "Qari         : Mishary Rashid Alafasy"
+  echo "Surah        : Al-Fatihah"
+  echo "Location     : $APP_DIR"
+  echo
+}
+
+
 # ============================================================
-# DIRECTORY
+# DIRECTORIES
 # ============================================================
 
 create_directories() {
@@ -94,7 +134,6 @@ create_directories() {
 # ============================================================
 
 download_audio() {
-
   echo
   echo -e "${CYAN}Downloading Mishary Alafasy - Al-Fatihah...${NC}"
   echo
@@ -120,17 +159,11 @@ download_audio() {
       "$AUDIO_BASE/$file" \
       -o "$AUDIO_DIR/$file"
     then
-
       echo -e "${GREEN}✓ Downloaded:${NC} $file"
-
     else
-
       echo -e "${RED}✗ Failed:${NC} $file"
-
       rm -f "$AUDIO_DIR/$file"
-
       failed=1
-
     fi
 
   done
@@ -143,13 +176,12 @@ download_audio() {
   fi
 
   echo -e "${RED}✗ Ada audio yang gagal dimuat turun.${NC}"
-
   return 1
 }
 
 
 # ============================================================
-# CREATE PLAYER
+# PLAYER SCRIPT
 # ============================================================
 
 create_player() {
@@ -165,9 +197,9 @@ LOCK_DIR="/tmp/quran-login.lock"
 LOCK_PID_FILE="/tmp/quran-login.pid"
 
 
-# ============================================================
-# LOCK CHECK
-# ============================================================
+# ------------------------------------------------------------
+# Prevent duplicate playback
+# ------------------------------------------------------------
 
 if [[ -f "\$LOCK_PID_FILE" ]]; then
 
@@ -177,46 +209,44 @@ if [[ -f "\$LOCK_PID_FILE" ]]; then
     exit 0
   fi
 
-  # Remove stale lock
   rm -f "\$LOCK_PID_FILE"
   rmdir "\$LOCK_DIR" 2>/dev/null || true
 
 fi
 
-
-# ============================================================
-# CREATE LOCK
-# ============================================================
 
 if ! mkdir "\$LOCK_DIR" 2>/dev/null; then
   exit 0
 fi
 
+
 echo "\$\$" > "\$LOCK_PID_FILE"
 
 
-# ============================================================
-# CLEANUP
-# ============================================================
+# ------------------------------------------------------------
+# Cleanup
+# ------------------------------------------------------------
 
 cleanup() {
+
   rm -f "\$LOCK_PID_FILE"
   rmdir "\$LOCK_DIR" 2>/dev/null || true
+
 }
 
 trap cleanup EXIT INT TERM
 
 
-# ============================================================
-# SMALL DELAY AFTER LOGIN
-# ============================================================
+# ------------------------------------------------------------
+# Small delay after login
+# ------------------------------------------------------------
 
 sleep 5
 
 
-# ============================================================
-# AUDIO FILES
-# ============================================================
+# ------------------------------------------------------------
+# Al-Fatihah audio
+# ------------------------------------------------------------
 
 AUDIO_FILES=(
   "001001.mp3"
@@ -229,9 +259,9 @@ AUDIO_FILES=(
 )
 
 
-# ============================================================
-# PLAY AL-FATIHAH
-# ============================================================
+# ------------------------------------------------------------
+# Play each ayah
+# ------------------------------------------------------------
 
 for file in "\${AUDIO_FILES[@]}"; do
 
@@ -250,7 +280,7 @@ EOF
 
 
 # ============================================================
-# CREATE LAUNCHAGENT
+# LAUNCHAGENT
 # ============================================================
 
 create_launchagent() {
@@ -259,7 +289,6 @@ create_launchagent() {
 
   cat > "$PLIST_FILE" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
-
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 
@@ -270,25 +299,19 @@ create_launchagent() {
   <key>Label</key>
   <string>com.quran.login</string>
 
-
   <key>ProgramArguments</key>
-
   <array>
     <string>$PLAYER_SCRIPT</string>
   </array>
 
-
   <key>RunAtLoad</key>
   <true/>
-
 
   <key>ProcessType</key>
   <string>Background</string>
 
-
   <key>StandardOutPath</key>
   <string>/tmp/quran-login.log</string>
-
 
   <key>StandardErrorPath</key>
   <string>/tmp/quran-login-error.log</string>
@@ -317,11 +340,8 @@ enable_auto_login() {
     return 1
   fi
 
-
   create_launchagent
 
-
-  # Remove previous instance if exists
   launchctl bootout \
     "gui/$(id -u)/com.quran.login" \
     2>/dev/null || true
@@ -360,9 +380,7 @@ disable_auto_login() {
     "gui/$(id -u)/com.quran.login" \
     2>/dev/null || true
 
-
   rm -f "$PLIST_FILE"
-
 
   echo
   echo -e "${GREEN}✓ Auto Login DISABLED.${NC}"
@@ -384,12 +402,10 @@ play_now() {
     return 1
   fi
 
-
   echo
   echo -e "${CYAN}▶ Memainkan Surah Al-Fatihah...${NC}"
   echo -e "${CYAN}Qari: Mishary Rashid Alafasy${NC}"
   echo
-
 
   "$PLAYER_SCRIPT"
 }
@@ -404,18 +420,15 @@ install_app() {
   header
 
   echo -e "${CYAN}INSTALL / UPDATE${NC}"
-
   echo
 
   echo "User     : $USER"
   echo "Location : $APP_DIR"
-
   echo
 
-
   printf "Teruskan? [Y/n]: "
-  IFS= read -r answer
 
+  answer="$(read_input)"
 
   if [[ "$answer" =~ ^[Nn]$ ]]; then
 
@@ -423,7 +436,6 @@ install_app() {
     echo "Installation dibatalkan."
 
     return 0
-
   fi
 
 
@@ -442,7 +454,6 @@ install_app() {
     echo -e "${RED}Installation dihentikan kerana audio gagal dimuat turun.${NC}"
 
     return 1
-
   fi
 
 
@@ -459,10 +470,8 @@ install_app() {
 
   echo
   echo "Auto Login belum diaktifkan."
-
   echo "Gunakan menu:"
   echo "3. Enable Auto Login"
-
   echo
 }
 
@@ -476,20 +485,16 @@ uninstall_app() {
   header
 
   echo -e "${RED}UNINSTALL QURAN LOGIN${NC}"
-
   echo
 
   echo "Ini akan membuang:"
-
   echo "  $APP_DIR"
   echo "  $PLIST_FILE"
-
   echo
 
-
   printf "Betul-betul uninstall? [y/N]: "
-  IFS= read -r answer
 
+  answer="$(read_input)"
 
   if [[ ! "$answer" =~ ^[Yy]$ ]]; then
 
@@ -497,7 +502,6 @@ uninstall_app() {
     echo "Uninstall dibatalkan."
 
     return 0
-
   fi
 
 
@@ -507,7 +511,6 @@ uninstall_app() {
 
 
   rm -f "$PLIST_FILE"
-
 
   rm -rf "$APP_DIR"
 
@@ -525,51 +528,6 @@ uninstall_app() {
 
 
 # ============================================================
-# SHOW STATUS
-# ============================================================
-
-show_status() {
-
-  echo
-
-  echo "STATUS"
-
-  echo "────────────────────────────────────────────"
-
-
-  if is_installed; then
-
-    echo -e "Installation : ${GREEN}INSTALLED${NC}"
-
-  else
-
-    echo -e "Installation : ${RED}NOT INSTALLED${NC}"
-
-  fi
-
-
-  if is_enabled; then
-
-    echo -e "Auto Login   : ${GREEN}ENABLED${NC}"
-
-  else
-
-    echo -e "Auto Login   : ${YELLOW}DISABLED${NC}"
-
-  fi
-
-
-  echo "Qari         : Mishary Rashid Alafasy"
-
-  echo "Surah        : Al-Fatihah"
-
-  echo "Location     : $APP_DIR"
-
-  echo
-}
-
-
-# ============================================================
 # MAIN MENU
 # ============================================================
 
@@ -578,7 +536,6 @@ while true; do
   header
 
   show_status
-
 
   echo "1. Install / Update"
   echo "2. ▶  Play Al-Fatihah"
@@ -589,11 +546,12 @@ while true; do
 
   echo
 
-
   printf "Pilih [1-6]: "
 
-  IFS= read -r choice
+  choice="$(read_input)"
 
+  # Remove possible carriage return
+  choice="${choice//$'\r'/}"
 
   case "$choice" in
 
@@ -602,30 +560,25 @@ while true; do
       pause_screen
       ;;
 
-
     2)
       play_now
       pause_screen
       ;;
-
 
     3)
       enable_auto_login
       pause_screen
       ;;
 
-
     4)
       disable_auto_login
       pause_screen
       ;;
 
-
     5)
       uninstall_app
       pause_screen
       ;;
-
 
     6)
       clear
@@ -634,7 +587,6 @@ while true; do
       echo
       exit 0
       ;;
-
 
     *)
       echo
